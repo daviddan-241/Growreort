@@ -1,9 +1,11 @@
+import asyncio
 import logging
 import os
 import sys
 import time
 
 import discord
+from aiohttp import web
 from discord import app_commands
 
 logging.basicConfig(
@@ -292,9 +294,34 @@ async def webhooks(interaction: discord.Interaction) -> None:
         )
 
 
+async def _health(_request: web.Request) -> web.Response:
+    return web.Response(text="ok")
+
+
+async def start_http_server() -> None:
+    """Tiny HTTP server so the bot can run as a Render Web Service (free tier)."""
+    port = int(os.environ.get("PORT", "0"))
+    if port == 0:
+        return
+    app = web.Application()
+    app.router.add_get("/", _health)
+    app.router.add_get("/healthz", _health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    log.info("HTTP keep-alive server listening on :%s", port)
+
+
+async def run_bot() -> None:
+    async with bot:
+        await start_http_server()
+        await bot.start(TOKEN)
+
+
 def main() -> None:
     try:
-        bot.run(TOKEN, log_handler=None)
+        asyncio.run(run_bot())
     except discord.LoginFailure:
         log.error(
             "Invalid bot token. Reset it in the Discord Developer Portal "

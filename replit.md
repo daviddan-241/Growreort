@@ -33,20 +33,24 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - DM trigger: any DM message to the bot also triggers webhook generation (10s cooldown per user).
 - Run by the `Discord Bot` workflow.
 
-### Deploy on Render (Background Worker)
+### Deploy on Render (Free Web Service)
 
-The bot has no HTTP server — it must run as a **Background Worker**, not a Web Service.
+Render's free tier doesn't include Background Workers, so the bot also runs a tiny HTTP server (port `$PORT`, route `/healthz`) so it can deploy as a free **Web Service**.
 
-1. New + → Background Worker → connect the GitHub repo.
-2. Settings:
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python bot/bot.py`
-   - **Branch**: `main`
-3. Environment Variables:
-   - `DISCORD_BOT_TOKEN` = your bot token (from Discord Developer Portal)
-4. Click **Create Background Worker**. Render will install deps and start the bot. Watch the logs for `Logged in as Baldwin#9901`.
+The repo includes `render.yaml` — Render auto-detects it (Blueprint deploy):
 
-Notes:
-- `requirements.txt` lists `discord.py>=2.7.1` for Render's Python builder.
-- Render's free Background Worker tier has limited monthly hours; upgrade to Starter ($7/mo) for 24/7 uptime.
+1. Render dashboard → **New +** → **Blueprint** → connect repo `daviddan-241/Growreort`.
+2. Render reads `render.yaml`. When prompted, paste your `DISCORD_BOT_TOKEN`.
+3. Click **Apply**. Build runs `pip install -r requirements.txt`, then `python bot/bot.py` starts. Logs show `Logged in as Baldwin#9901` and `HTTP keep-alive server listening on :<port>`.
+
+Manual fallback (no Blueprint):
+- New + → **Web Service** → connect repo
+- Runtime: `Python 3`
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `python bot/bot.py`
+- Health Check Path: `/healthz`
+- Env Vars: `DISCORD_BOT_TOKEN` = your token
+
+Free tier sleep:
+- Render free Web Services sleep after **15 min of no inbound HTTP traffic**. The Discord gateway connection alone won't keep it awake.
+- To stay online 24/7, ping the Render URL every ~10 min from a free uptime monitor (UptimeRobot, cron-job.org, BetterStack). Use the public URL Render gives you (e.g. `https://baldwin-discord-bot.onrender.com/healthz`).
