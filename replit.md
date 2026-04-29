@@ -30,4 +30,23 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 - `bot/bot.py` — Discord bot using discord.py 2.x (Python 3.11). Reads `DISCORD_BOT_TOKEN` from secrets.
 - Slash command `/webhooks` (admin-only) creates a webhook named `BaldwinHook` for each configured channel and DMs the URLs to the invoker.
+- DM trigger: any DM message to the bot also triggers webhook generation (10s cooldown per user).
 - Run by the `Discord Bot` workflow.
+
+### Deploy on Render (Background Worker)
+
+The bot has no HTTP server — it must run as a **Background Worker**, not a Web Service.
+
+1. New + → Background Worker → connect the GitHub repo.
+2. Settings:
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python bot/bot.py`
+   - **Branch**: `main`
+3. Environment Variables:
+   - `DISCORD_BOT_TOKEN` = your bot token (from Discord Developer Portal)
+4. Click **Create Background Worker**. Render will install deps and start the bot. Watch the logs for `Logged in as Baldwin#9901`.
+
+Notes:
+- `requirements.txt` lists `discord.py>=2.7.1` for Render's Python builder.
+- Render's free Background Worker tier has limited monthly hours; upgrade to Starter ($7/mo) for 24/7 uptime.
